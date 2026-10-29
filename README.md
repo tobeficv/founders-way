@@ -19,6 +19,7 @@ Players whose idea gets built get a credit line too ("Idea by …").
 
 | Who | What |
 |---|---|
+| [@pacartos-dot](https://github.com/pacartos-dot) | 🇮🇹 Italian translation, first community PR ([#11](../../pull/11)) |
 | *Your name here* | Send your first PR or idea! |
 
 ### How rewards work
