@@ -2653,6 +2653,67 @@ function signBoard(p, w, h, m, x, y, z, ry = 0, two = true) {   // a flat sign w
   const geo = new THREE.PlaneGeometry(w, h); owned.push(geo);
   [0, Math.PI].slice(0, two ? 2 : 1).forEach(r => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry + r; o.translateZ(.02); p.add(o); });
 }
+// Downtown the street is many floors down, so the city also comes alive at our height:
+// a city screen that plays your campaigns (or other people's ads), banners on our facade,
+// a window cleaner's gondola and birds.
+const CITY_ADS = [['Fresh Juice Co', 'now open downtown', '#3fbf8a'], ['Metro Bank', 'loans for small business', '#2f3347'],
+  ['Summer Fest', 'this Saturday', '#e86a92'], ['NovaPhone 9', 'pre-order now', '#26272e'], ['City Gym', 'first month free', '#e0573f']];
+const MK_COL = { social: '#2f7de1', search: '#3fbf8a', influencer: '#e86a92', promoters: '#f2a632', flyers: '#3fbf8a', booth: '#2f7de1', billboard: '#26272e', content: '#a77bf0', partners: '#2f3347' };
+function bannerMat(head, brand, bg) {   // a tall banner: the headline wrapped over a few lines, the brand at the bottom
+  const t = canvasTex(128, 224, g => {
+    g.fillStyle = bg; g.fillRect(0, 0, 128, 224); g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(0, 0, 128, 8); g.fillRect(0, 216, 128, 8);
+    g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const words = String(head).split(/\s+/), lines = []; let px = 26;
+    for (; px >= 14; px -= 2) {
+      g.font = `800 ${px}px Nunito, sans-serif`; lines.length = 0; let cur = '';
+      words.forEach(w => { const t2 = cur ? cur + ' ' + w : w; if (g.measureText(t2).width > 112 && cur) { lines.push(cur); cur = w; } else cur = t2; });
+      if (cur) lines.push(cur);
+      if (lines.length * px * 1.15 <= 140 && lines.every(l => g.measureText(l).width <= 116)) break;
+    }
+    lines.forEach((l, i) => g.fillText(l, 64, 90 - (lines.length - 1) * px * .575 + i * px * 1.15));
+    let bp = 20; do { g.font = `700 ${bp}px Nunito, sans-serif`; bp -= 2; } while (g.measureText(brand).width > 112 && bp > 9);
+    g.globalAlpha = .85; g.fillText(brand, 64, 186); g.globalAlpha = 1;
+  }, false);
+  const m = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide }); owned.push(m); return m;
+}
+function buildSkyLife(g, W, D, T, brand, ev, act) {
+  const FZ = D + T + .23, H = 2.6;
+  // 1. the city screen, on a pylon across the plaza, a bit above our floor
+  const scr = new THREE.Group(); scr.position.set(W + 3.2, 0, D * .3); scr.rotation.y = -.7; g.add(scr);
+  const sw = 6.4, sh = 3.6, top = 6;
+  box(scr, .9, top - sh - .2 - street.gy, .9, '#3a3f4f', 0, street.gy, -.3);
+  box(scr, sw + .5, sh + .5, .45, '#1d1f27', 0, top - sh - .25, -.25);
+  const bill = act.filter(c => c.ch === 'billboard');
+  let slides = bill.length ? bill.map(c => [c.head || brand, brand, '#26272e', '#ffd27e'])   // you rented the screen
+    : act.map(c => [c.head || brand, c.ch === 'social' || c.ch === 'influencer' ? '#' + brand.replace(/\s+/g, '') : c.ch === 'search' ? 'Sponsored · ' + brand : brand, MK_COL[c.ch] || '#2f7de1']);
+  if (ev && ev.k === 'rival') slides.push(['Try RivalCo', '50% off this week', '#6d3fb5']);
+  if (!bill.length) slides = slides.concat(CITY_ADS.slice(0, Math.max(2, 4 - slides.length)));
+  const mats = slides.map(([a, b, c, f]) => signMat(a, b, c, f)), geo = new THREE.PlaneGeometry(sw, sh); owned.push(geo);
+  const face = new THREE.Mesh(geo, mats[0]); face.position.set(0, top - sh / 2, .01); scr.add(face);
+  street.screen = { face, mats, i: 0, t: 0 };
+  // 2. a banner down our facade for every street campaign (the action itself is in the plaza below)
+  act.filter(c => MKCH[c.ch].street).slice(0, 3).forEach((c, i, a) => {
+    const x = W * [.25, .75, .5][i], bw = 3.2, bh = 4.6;
+    box(g, bw + .5, .14, .14, '#5d6170', x, -.75, FZ + .12, false);
+    const bg = new THREE.PlaneGeometry(bw, bh); owned.push(bg);
+    const b = new THREE.Mesh(bg, bannerMat(c.head || brand, c.ch === 'booth' ? 'Stand in the plaza' : brand, MK_COL[c.ch] || '#f2a632'));
+    b.position.set(x, -.75 - bh / 2, FZ + .08); g.add(b);
+  });
+  // 3. a window cleaner's gondola going slowly up and down
+  const gon = new THREE.Group(), gx = 2.4; gon.position.set(gx, -8, FZ + .55); g.add(gon);
+  box(gon, 3.2, .18, .8, '#e6b422', 0, 0, 0); box(gon, 3.2, .9, .06, '#c99a14', 0, .18, .38, false); box(gon, .06, .9, .8, '#c99a14', -1.6, .18, 0, false); box(gon, .06, .9, .8, '#c99a14', 1.6, .18, 0, false);
+  const cleaners = [-.7, .7].map((dx, i) => { const m = streetChar({ shirt: '#2f7de1', acc: 'cap' }, gx + dx, 0, FZ + .5); gon.attach(m); m.position.set(dx, .18, 0); m.rotation.y = Math.PI; return { m, ph: i * 2 }; });
+  const cables = [-1.4, 1.4].map(dx => box(g, .04, 1, .04, '#2b2b33', gx + dx, 0, FZ + .5, false));
+  street.gondola = { g: gon, cleaners, cables, top: H + .2 };
+  // 4. birds
+  street.birds = [];
+  for (let i = 0; i < (ui.gfx === 'low' ? 2 : 4); i++) {
+    const b = new THREE.Group(); g.add(b);
+    box(b, .18, .14, .5, '#3a3f4f', 0, 0, 0, false);
+    const wings = [-1, 1].map(sd => { const p = new THREE.Group(); p.position.set(sd * .08, .1, 0); b.add(p); box(p, .5, .04, .26, '#4a5064', sd * .25, 0, 0, false); return p; });
+    street.birds.push({ g: b, wings, a: i * 1.7, r: 26 + i * 4, y: 5 + i * 1.3, sp: .22 + i * .05 * (i % 2 ? -1 : 1), cx: W / 2, cz: D / 2 });
+  }
+}
 function buildStreetLife(st, W, D, T) {
   if (street) disposeChar(street.g);
   street = null;
@@ -2661,7 +2722,7 @@ function buildStreetLife(st, W, D, T) {
   const tower = S.office >= 3, N = S.office === 4 ? 10 : 6, gy = tower ? -N * 3.2 - .4 + .1 : 0;
   const S0 = D + T, front = tower ? D + T + 5 : S0 + 1, far = tower ? -T - 5 : S0 + 8;
   const x0 = tower ? W / 2 - 22 : -24, x1 = tower ? W / 2 + 22 : W + 24;
-  street = { g, peds: [], cars: [], promos: [], gy, x0, x1, t: 0 };
+  street = { g, peds: [], cars: [], promos: [], gy, x0, x1, t: 0, screen: null, gondola: null, birds: [] };
   const brand = S.name || 'Our startup', ev = streetEv(), act = mkActive();
   // people walking by
   const maxP = ui.gfx === 'low' ? 5 : 12;
@@ -2706,11 +2767,11 @@ function buildStreetLife(st, W, D, T) {
       cyl(g, .04, 1.9, '#3a3f4f', x, gy, z);
       signBoard(g, .7, .95, signMat(head, brand, i % 2 ? '#e86a92' : '#3fbf8a'), x, gy + 1.4, z - .06, 0);
     }
-    if (c.ch === 'billboard') {
-      const x = tower ? W + 9 : W + 7, z = tower ? D + T + 7 : far + 1.4, base = tower ? gy : 0, h = tower ? Math.max(5, -gy - 3.5) : 5.2;
-      [-2.2, 2.2].forEach(dx => box(g, .25, h, .25, '#5d6170', x + dx, base, z));
-      box(g, 6.6, 2.8, .25, '#2f3347', x, base + h, z);
-      signBoard(g, 6.2, 2.4, signMat(brand, head, '#26272e', '#ffd27e'), x, base + h + 1.4, z, 0);
+    if (c.ch === 'billboard' && !tower) {
+      const x = W + 7, z = far + 1.4, h = 5.2;
+      [-2.2, 2.2].forEach(dx => box(g, .25, h, .25, '#5d6170', x + dx, 0, z));
+      box(g, 6.6, 2.8, .25, '#2f3347', x, h, z);
+      signBoard(g, 6.2, 2.4, signMat(brand, head, '#26272e', '#ffd27e'), x, h + 1.4, z, 0);
     }
   });
   // street events
@@ -2733,6 +2794,7 @@ function buildStreetLife(st, W, D, T) {
     const m = box(g, 2.3, .1, 1.3, c, x, gy + 2, z); m.rotation.x = .12;
     [[-1, -.4], [1, -.4], [-1, .4], [1, .4]].forEach(([dx, dz]) => cyl(g, .04, 2, '#5d6170', x + dx, gy, z + dz));
   });
+  if (tower) buildSkyLife(g, W, D, T, brand, ev, act);
 }
 function streetTick(t, dt) {
   if (!street) return;
@@ -2755,6 +2817,21 @@ function streetTick(t, dt) {
     u.arms[0].rotation.x = p.stand ? -.9 + Math.sin(t * 3 + p.ph) * .15 : -2.4 + Math.sin(t * 5 + p.ph) * .35;
     u.arms[1].rotation.x = p.stand ? -.9 : -.6;
     u.body.position.y = Math.abs(Math.sin(t * 2 + p.ph)) * .02;
+  });
+  const sc = street.screen;
+  if (sc && sc.mats.length > 1 && (sc.t += dt) > 4) { sc.t = 0; sc.i = (sc.i + 1) % sc.mats.length; sc.face.material = sc.mats[sc.i]; }
+  const gd = street.gondola;
+  if (gd) {
+    const y = -8.5 + (Math.sin(t * .07) + 1) * 3.2;   // drifts between the floors below ours
+    gd.g.position.y = y;
+    gd.cables.forEach(c => { const len = gd.top - y - .9; c.scale.y = len; c.position.y = y + .9 + len / 2; });
+    gd.cleaners.forEach(c => { const u = c.m.userData; u.arms[0].rotation.x = -1.9 + Math.sin(t * 4 + c.ph) * .5; u.arms[1].rotation.x = -.4; });
+  }
+  street.birds.forEach(b => {
+    b.a += b.sp * dt;
+    b.g.position.set(b.cx + Math.cos(b.a) * b.r, b.y + Math.sin(t * .8 + b.r) * .6, b.cz + Math.sin(b.a) * b.r * .7);
+    b.g.rotation.y = Math.atan2(-Math.sin(b.a) * b.sp, Math.cos(b.a) * .7 * b.sp);
+    const f = Math.sin(t * 9 + b.r) * .6; b.wings[0].rotation.z = f; b.wings[1].rotation.z = -f;
   });
 }
 // The top floor of a glass tower, with the city far below.
