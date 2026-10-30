@@ -24,6 +24,8 @@ permissions:
 
 jobs:
   queue:
+    # Forks copy this file; only the original repo runs the rounds (forks have no Claude token anyway).
+    if: github.repository == 'tobeficv/founders-way'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
