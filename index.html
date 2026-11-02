@@ -303,6 +303,20 @@
   .vol{display:flex;align-items:center;gap:8px;padding:6px 10px;font:700 13px var(--fb)}.vol span{width:86px;flex:none}
   .vol #langSlot{width:auto;flex:1;min-width:0}#langSlot select{width:100%!important;max-width:100%}
   @media (max-width:760px){ #mentor{bottom:calc(78px + env(safe-area-inset-bottom,0px))} .mav{width:44px;height:44px;font-size:25px} }
+  /* phones: a two-row top bar, windows as sheets above the dock, bigger touch targets */
+  @media (max-width:600px){
+    #tb{top:calc(6px + env(safe-area-inset-top,0px));padding:4px;gap:4px;border-radius:14px}
+    #tb .brand,#tb .s-mrr,#tb .s-q,#tb .speed [data-s="0.25"],#tb .speed [data-s="0.5"],#muteBtn{display:none}
+    .stat{padding:3px 7px}.stat.goal{min-width:88px}.clock{padding:0 4px}
+    .speed button,.ddb{min-height:40px;padding:0 9px}
+    .win{left:6px!important;right:6px;top:auto!important;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:auto!important;max-height:calc(100% - var(--tbh,140px) - 100px)}
+    .win.min{display:none}
+    .wh{cursor:default;padding:8px 8px 8px 12px}.wbtn{width:36px;height:36px;font-size:15px}
+    body:has(.win:not(.min)) #hint{display:none}
+    #dock{gap:2px;padding:5px}#dock .sep{display:none}
+    #dock button{width:52px;height:52px}
+    #dock:not(.end){-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent)}
+  }
   /* ---------- new-game wizard, knowledge bars, memo ---------- */
   .wzsteps{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 4px}.wzsteps span{font:800 11px var(--fb);color:var(--muted);background:var(--paper2);border-radius:999px;padding:4px 10px}
   .wzsteps span.on{background:var(--sky);color:#fff}.wzsteps span.done{color:var(--good)}
@@ -431,9 +445,9 @@
 <div id="tb">
   <div class="brand"><b id="cname">—</b><span id="diffTag" class="diff"></span></div>
   <button class="stat" data-w="finance" title="Open Finance"><i>💵</i><span>Cash<b data-v="cash"></b><small class="flow" id="flowChip" title="Money in and out per day. Click for details"><em id="flowIn"></em> <em id="flowOut"></em></small></span></button>
-  <button class="stat" data-w="finance" title="Monthly recurring revenue"><i>📈</i><span>MRR<b data-v="mrr"></b></span></button>
+  <button class="stat s-mrr" data-w="finance" title="Monthly recurring revenue"><i>📈</i><span>MRR<b data-v="mrr"></b></span></button>
   <button class="stat" data-w="market" title="Open Marketing & sales"><i>🙂</i><span>Customers<b data-v="cust"></b></span></button>
-  <button class="stat" data-w="product" title="Open Product"><i>⭐</i><span>Quality<b data-v="q"></b></span></button>
+  <button class="stat s-q" data-w="product" title="Open Product"><i>⭐</i><span>Quality<b data-v="q"></b></span></button>
   <button class="stat goal" data-w="finance" title="Progress to the $10M goal"><span>Valuation<b data-v="val"></b></span><div class="gbar"><i data-bar="goal"></i></div></button>
   <div class="clock"><b data-v="day"></b><span data-v="clock"></span></div>
   <div class="speed">
@@ -1679,6 +1693,11 @@ trSetup();
 [...TRX.tpl.values(), TRX.wild].forEach(l => l.sort((a, b) => b.len - a.len));   // the most specific template wins
 // @@I18N-END
 const tbBottom = () => document.getElementById('tb').getBoundingClientRect().bottom || 80;
+const phone = () => matchMedia('(max-width:600px)').matches;
+// windows size themselves under the top bar, whose height changes with its contents
+new ResizeObserver(() => document.documentElement.style.setProperty('--tbh', tbBottom() + 'px')).observe(document.getElementById('tb'));
+{ const d = document.getElementById('dock'), f = () => d.classList.toggle('end', d.scrollLeft + d.clientWidth >= d.scrollWidth - 4);
+  d.addEventListener('scroll', f, { passive: true }); addEventListener('resize', f); new ResizeObserver(f).observe(d); }
 Object.entries(ui.fold).forEach(([k, v]) => document.getElementById(k)?.classList.toggle('fold', v));
 if (innerWidth < 700 && ui.fold.goals === undefined) document.getElementById('goals').classList.add('fold');
 
@@ -1737,7 +1756,7 @@ function wireWin(el, k) {
     else if (e.target.closest('[data-wmin]')) setMin(k, !ui.min[k]);
   });
   head.addEventListener('pointerdown', e => {
-    if (e.target.closest('button') || e.button !== 0) return;
+    if (e.target.closest('button') || e.button !== 0 || phone()) return;
     const r = el.getBoundingClientRect(), ox = e.clientX - r.left, oy = e.clientY - r.top;
     head.setPointerCapture(e.pointerId); head.classList.add('drag');
     const mv = ev => place(el, ev.clientX - ox, ev.clientY - oy);
