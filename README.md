@@ -6,6 +6,10 @@ A 3D startup tycoon where you build **your own** company idea, test it against r
 
 ▶ **[Play in your browser](https://tobeficv.github.io/founders-way/)**. No install, no account. It updates automatically with every merged change.
 
+⚡ **[Test your startup idea in 60 seconds](https://tobeficv.github.io/founders-way/?try)**: one line, a business model and a price. You get how many of 100 simulated futures are profitable after a year, and the assumption that decides it.
+
+📅 **[Daily: live or die?](https://tobeficv.github.io/founders-way/?daily)** Three startups, the same for everyone each day. Guess which ones survive and share your score.
+
 ## Help shape the game
 
 - 💡 **Suggest a feature:** open a [Feature request](../../issues/new?template=feature_request.yml). Vote on other ideas with 👍. The most-voted ideas go into the roadmap.
@@ -35,6 +39,10 @@ Every pull request gets an automatic review with feedback within about 2 hours. 
 - **Now:** the game is a single web page (HTML + JavaScript + three.js) so anyone can play it instantly and every merged change goes live in a minute.
 - **Next:** online leaderboard with server-side replay of each game (anti-cheat).
 - **Later:** a desktop build for PC (Windows/macOS/Linux) and Steam, made by packaging this same code as a desktop app. Contributions keep working: there is no rewrite planned.
+
+## Privacy
+
+The online version counts visits and a few anonymous events (for example "ran a quick test" or "shared a daily result") with [GoatCounter](https://www.goatcounter.com/). There are no cookies and no personal data, and nothing is counted if your browser sends Do Not Track or if you open the game from a local file. Your ideas and saves stay in your browser.
 
 ## License
 
